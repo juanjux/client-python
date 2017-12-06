@@ -5,6 +5,7 @@ import docker
 
 from bblfsh import BblfshClient, filter, role_id, role_name, Node, ParseResponse
 from bblfsh.launcher import ensure_bblfsh_is_running
+from bblfsh.client import GrpcEncodingException
 
 
 class BblfshTests(unittest.TestCase):
@@ -34,6 +35,10 @@ class BblfshTests(unittest.TestCase):
     def testNativeParse(self):
         reply = self.client.native_parse(__file__)
         assert(reply.ast)
+
+    def testNonUTF8ParseError(self):
+        self.assertRaises(GrpcEncodingException,
+                          self.client.parse, "", "Python", b"a = '\x80abc'")
 
     def testUASTDefaultLanguage(self):
         self._validate_resp(self.client.parse(__file__))

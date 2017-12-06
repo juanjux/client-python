@@ -11,6 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__),
                                 "gopkg/in/bblfsh/sdk/%s/protocol" % VERSION))
 sys.path.insert(0, os.path.dirname(__file__))
 
+class GrpcEncodingException(Exception):
+    pass
 
 class BblfshClient(object):
     """
@@ -51,9 +53,17 @@ class BblfshClient(object):
         if contents is None:
             with open(filename, "rb") as fin:
                 contents = fin.read()
-        request = ParseRequest(filename=os.path.basename(filename),
-                               content=contents,
-                               language=self._scramble_language(language))
+        try:
+            request = ParseRequest(filename=os.path.basename(filename),
+                                   content=contents,
+                                   language=self._scramble_language(language))
+        except ValueError as e:
+            if "isn't valid UTF-8 encoding" in str(e):
+                raise GrpcEncodingException("Content sent to the server must be "
+                        "UTF-8/ASCII or Base64 encoded") from None
+            else:
+                raise
+
         return self._stub.Parse(request, timeout=timeout)
 
     def native_parse(self, filename, language=None, contents=None, timeout=None):
